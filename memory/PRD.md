@@ -248,3 +248,28 @@ Pilihan user: clone ulang repo; Desainer dulu lalu R&D; nilai tetap satu kali di
 
 ### 2026-09-21 — Perapian UI Pesanan Khusus
 - `SpecialOrderInfoPanels.jsx` ditulis ulang: panel Rincian item custom / Info pelanggan / Riwayat status memakai gaya seragam panel Fase 2–4 (section-card !p-3, kicker label, sel grid), label Bahasa Indonesia, tidak ada konten menempel tepi kartu; grid `items-start`. Popup Tolak → FormModal standar; label "Reject" → "Tolak"; kolom tabel "Expected Del." → "Perkiraan kirim". Testing agent iterasi 53: lolos (tanpa overflow).
+
+---
+
+## Sesi 2026-09-21 — Perbaikan fokus input form R&D (repo github.com/pandeyoga/KNHOST)
+
+### Problem statement (asli)
+"saya ingin anda lanjutkan development dari repo ini https://github.com/pandeyoga/KNHOST — perbaiki beberapa form di menu RND,
+ketika saya buat labdip, proofing, dan handfeel ketika saya ingin isi form itu hanya setiap satu charakter saya harus klik kolom
+form kembali sepertinya ada bug front end." Pilihan user: clone branch main; periksa & perbaiki semua form RND dengan pola sama.
+
+### Akar masalah
+`features/rnd/SampleSpecFields.jsx` mendefinisikan komponen pembungkus `L` DI DALAM fungsi render → tiap keystroke induk re-render,
+referensi komponen baru → React unmount/remount `<input>` → fokus hilang. Pola sama di `features/rnd/design/FinalPanel.jsx` (`Row`).
+
+### Yang dikerjakan
+- `L` (SampleSpecFields) dan `Row` (FinalPanel) dipindah ke module scope. Berdampak ke form Labdip/Handfeel/Proofing
+  (`sample-form-modal` dari `rnd-samples` & galeri `rnd-labdip|handfeel|proofing`) serta `SampleSpecPanel`.
+- Audit pola yang sama di seluruh `frontend/src`: sisa kasus (LocationFields `L`, DocRefsPanel/ReallocateRollsModal `Row`,
+  CoreWidgets `FavStar`, PdfEditorTabs `Diff`, DomainRegistryParts) TIDAK membungkus input → tidak menimbulkan bug fokus; dibiarkan.
+- Lingkungan: backend/.env CORS_ORIGINS eksplisit + SESSION_COOKIE_SECURE; seed_realistic dijalankan; bundle frontend di-rebuild.
+- Uji: testing agent iteration_54 — 21/21 field mempertahankan fokus saat mengetik kontinu di semua titik masuk.
+
+### Catatan
+- `sample-spec-sku` sengaja meng-uppercase ketikan (perilaku lama, bukan bug).
+- Frontend statis: setelah ubah src → `setsid nohup bash /app/scripts/rebuild_frontend.sh > /app/.rebuild.out 2>&1 &` (±8 mnt).
