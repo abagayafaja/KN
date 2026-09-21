@@ -86,7 +86,7 @@ export default function ImpactPicker({ selectedEntity, canApply }) {
     setPicked((prev) => (prev.includes(id) ? prev.filter((x) => x !== id) : [...prev, id]));
 
   return (
-    <div className="cfg-impact" data-testid="cfg-impact-tool">
+    <div className="cfg-impact-tool" data-testid="cfg-impact-tool">
       <div className="cfg-impact-intro">
         <ListChecks size={18} />
         <div>
@@ -102,7 +102,7 @@ export default function ImpactPicker({ selectedEntity, canApply }) {
       <ErrorNotice message={err} onRetry={plan ? loadPlan : undefined} onDismiss={() => setErr("")} />
 
       <div className="cfg-impact-form">
-        <label className="cfg-impact-field">
+        <label className="cfg-impact-field cfg-impact-field-wide">
           <span>Produk</span>
           <KNSelect
             value={productId}

@@ -75,7 +75,7 @@ export default function CostingView({ selectedEntity }) {
           <div className="flex items-center gap-2 ml-auto">
             <div className="relative">
               <Search size={13} className="absolute left-2 top-1/2 -translate-y-1/2 text-[#9A9BA3]" />
-              <input data-testid="costing-search" className="field pl-7 py-1 text-[12px]" placeholder="Cari produk..." value={q} onChange={(e) => setQ(e.target.value)} />
+              <input data-testid="costing-search" className="field !pl-7 !py-1 !text-[12px]" placeholder="Cari produk..." value={q} onChange={(e) => setQ(e.target.value)} />
             </div>
             <button data-testid="costing-refresh" className="icon-button" onClick={load} aria-label="Refresh"><RefreshCw size={14} className={loading ? "animate-spin" : ""} /></button>
           </div>

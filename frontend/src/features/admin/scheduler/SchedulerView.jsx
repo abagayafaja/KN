@@ -266,10 +266,10 @@ export default function SchedulerView({ currentUser, onNavigate }) {
       </div>
 
       {/* Tabs */}
-      <div className="flex items-center gap-1 border-b border-[#EFEFF4]">
+      <div className="tab-pills !mb-0" role="tablist">
         {TABS.map((t) => (
-          <button key={t.k} data-testid={`sched-tab-${t.k}`} onClick={() => setTab(t.k)}
-                  className={`-mb-px inline-flex items-center gap-1.5 border-b-2 px-3.5 py-2 text-[12px] font-bold transition ${tab === t.k ? "border-[#6B219A] text-[#6B219A]" : "border-transparent text-[#8E8E93] hover:text-[#3A3A3C]"}`}>
+          <button key={t.k} type="button" role="tab" aria-selected={tab === t.k} data-testid={`sched-tab-${t.k}`} onClick={() => setTab(t.k)}
+                  className={`tab-pill inline-flex items-center gap-1.5 ${tab === t.k ? "active" : ""}`}>
             <t.icon size={14} /> {t.label}
           </button>
         ))}

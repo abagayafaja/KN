@@ -162,7 +162,7 @@ export default function PoBoardView({ selectedEntity = "all", onOpenDocument }) 
               <Search size={13} className="absolute left-2 top-1/2 -translate-y-1/2 text-[#8E8E93]" />
               <input
                 data-testid="po-board-search"
-                className="field pl-7 w-[190px]"
+                className="field !pl-7 w-[190px]"
                 placeholder="Cari PO / sales / item…"
                 value={search}
                 onChange={(e) => setSearch(e.target.value)}

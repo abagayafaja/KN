@@ -112,10 +112,10 @@ export default function PdfEditorTabs({
   return (
     <section className="section-card" data-testid="pdf-editor">
       <Tabs defaultValue="layout" className="w-full">
-        <TabsList className="flex w-full flex-wrap gap-1 bg-transparent p-2 border-b border-[#EDEEF1]">
+        <TabsList className="flex h-auto w-full flex-wrap justify-start gap-1.5 bg-transparent p-2 border-b border-[#EDEEF1]">
           {EDITOR_TABS.map((t) => (
             <TabsTrigger key={t.id} value={t.id} data-testid={`pdf-tab-${t.id}`}
-              className="text-[12px] px-3 py-1.5 rounded-md data-[state=active]:bg-[#EAF2FF] data-[state=active]:text-[#0058CC] data-[state=active]:font-semibold">
+              className="rounded-full border border-[#E5E5EA] bg-[#F5F5F7] px-3.5 py-1.5 text-[12.5px] font-medium text-[#6B6B73] shadow-none data-[state=active]:border-[#007AFF] data-[state=active]:bg-[#007AFF] data-[state=active]:text-white data-[state=active]:shadow-none">
               {t.label}
             </TabsTrigger>
           ))}

@@ -270,7 +270,7 @@ export default function ApprovalRulesSettings({ currentUser }) {
                       className={`status-pill ${rule.active !== false ? "pill-success" : "pill-muted"}`}
                       onClick={() => toggleActive(rule)}
                     >
-                      {rule.active !== false ? "Active" : "Inactive"}
+                      {rule.active !== false ? "Aktif" : "Nonaktif"}
                     </button>
                   </td>
                   <td>

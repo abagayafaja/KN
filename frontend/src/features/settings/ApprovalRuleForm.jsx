@@ -26,7 +26,7 @@ export default function ApprovalRuleForm({ formData, setFormData, onSubmit, onCa
         </div>
       )}
 
-      <form onSubmit={onSubmit}>
+      <form onSubmit={onSubmit} className="grid gap-3">
         <div className="form-row-2col">
           <div className="form-group">
             <label className="form-label">Jenis Dokumen <span className="req">*</span></label>
@@ -118,7 +118,7 @@ export default function ApprovalRuleForm({ formData, setFormData, onSubmit, onCa
           </div>
 
           <div className="form-group">
-            <label className="form-check-label mt-6">
+            <label className="form-check-label sm:mt-6">
               <input
                 type="checkbox"
                 data-testid="rule-active"
@@ -135,7 +135,7 @@ export default function ApprovalRuleForm({ formData, setFormData, onSubmit, onCa
             Batal
           </button>
           <button type="submit" data-testid="save-rule-btn" className="primary-button">
-            <CheckCircle2 size={14} /> {editingRule ? "Update" : "Buat"} Aturan
+            <CheckCircle2 size={14} /> {editingRule ? "Simpan Perubahan" : "Buat Aturan"}
           </button>
         </div>
       </form>

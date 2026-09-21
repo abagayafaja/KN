@@ -235,7 +235,7 @@ export default function FixedAssetsView({ selectedEntity, entities = [] }) {
           <div className="flex items-center gap-2 ml-auto">
             <div className="relative">
               <Search size={13} className="absolute left-2 top-1/2 -translate-y-1/2 text-[#9A9BA3]" />
-              <input data-testid="fa-search" className="field pl-7 py-1 text-[12px]" placeholder="Cari nomor / nama..."
+              <input data-testid="fa-search" className="field !pl-7 !py-1 !text-[12px]" placeholder="Cari nomor / nama..."
                 value={q} onChange={(e) => setQ(e.target.value)} />
             </div>
             <button data-testid="add-asset-btn" className="primary-button" onClick={() => setShowAdd(true)}>

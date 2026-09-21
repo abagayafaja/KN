@@ -59,7 +59,10 @@ export default function ConfigHealthPanel({ onOpenSetting }) {
   //   legend: {STATUS: penjelasan} — dipakai sebagai sumber kebenaran teks status
   // Merender objek/array langsung ke JSX memicu React error #31, jadi selalu
   // diturunkan dulu ke primitif di sini.
-  const brokenList = Array.isArray(data?.broken) ? data.broken : [];
+  // `broken` berisi OBJEK baris {key,label,…} — turunkan ke teks dulu, jangan di-join langsung ([object Object]).
+  const brokenList = (Array.isArray(data?.broken) ? data.broken : [])
+    .map((b) => (typeof b === "string" ? b : (b?.label || b?.key || "")))
+    .filter(Boolean);
   const broken = brokenList.length;
   const sched = data?.scheduled_applied || {};
   const schedApplied = Number(sched.applied || 0);

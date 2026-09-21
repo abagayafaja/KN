@@ -28,6 +28,7 @@ import {
 import axios, { API } from "../../../services/apiClient";
 import ErrorNotice from "../../../components/ErrorNotice";
 import KNSelect from "../../../components/KNSelect";
+import FormModal from "../../../components/FormModal";
 import useUomConversions from "../../../hooks/useUomConversions";   // FASE U
 import { uomSelectOptions } from "../../../utils/uomCatalog";        // FASE U
 import { entityShort, entityShortById } from "../../../utils/entityLabel";
@@ -277,10 +278,9 @@ export default function EntityMastersView({ entities = [], selectedEntity = "all
                   onClick={() => {
                     // Bawaan diisi saat form DIBUKA (bukan disimpan di state awal),
                     // supaya berganti jenis master tidak membawa bawaan master lain.
-                    setCreating((v) => {
-                      if (!v) setCreateValues(defaultsFor(kind));
-                      return !v;
-                    });
+                    setCreateValues(defaultsFor(kind));
+                    setCreateGlobal(false);
+                    setCreating(true);
                     setEditRow(null);
                   }}>
                   <Plus size={13} /> Baris baru
@@ -309,63 +309,52 @@ export default function EntityMastersView({ entities = [], selectedEntity = "all
               </div>
             )}
 
-            {/* Form tambah baris */}
-            {creating && (
-              <div data-testid="em-create-form"
-                className="mb-3 rounded-md border border-[#0058CC]/30 bg-[#F7FAFF] p-3">
-                <p className="mb-2 text-[11px] font-bold uppercase tracking-wide text-[#004099]">
-                  Baris baru · {groupMode ? "Global" : (createGlobal ? "Global" : `khusus ${entityLabel}`)}
-                </p>
-                <div className="grid gap-2 sm:grid-cols-2">
-                  {createFields.map((f) => (
-                    <label key={f.key} className="grid gap-1 text-[11px] text-[#6B6B73]">
-                      <span>{f.label}{f.required && <span className="text-[#C0392B]"> *</span>}</span>
-                      {f.type === "select" ? (
-                        <KNSelect testId={`em-form-${f.key}`} value={createValues[f.key] ?? ""}
-                          onValueChange={(v) => setCreateValues({ ...createValues, [f.key]: v })}
-                          options={selectOptionsOf(f)} placeholder="Pilih…" />
-                      ) : f.type === "checkbox" ? (
-                        <input data-testid={`em-form-${f.key}`} type="checkbox"
-                          checked={Boolean(createValues[f.key])}
-                          onChange={(e) => setCreateValues({ ...createValues, [f.key]: e.target.checked })}
-                          className="h-4 w-4" />
-                      ) : (
-                        <input data-testid={`em-form-${f.key}`} type={f.type === "number" ? "number" : "text"}
-                          value={toInputValue(f, createValues[f.key]) ?? ""} placeholder={f.placeholder || ""}
-                          onChange={(e) => setCreateValues({
-                            ...createValues,
-                            [f.key]: parseFieldValue(f, e.target.value),
-                          })}
-                          className="h-8 rounded-md border border-[#E5E5EA] bg-white px-2 text-[12px] text-[#1C1C1E] focus:border-[#0058CC] focus:outline-none" />
-                      )}
-                      {f.hint && (
-                        <span className="text-[10px] text-[#8E8E93]" data-testid={`em-form-hint-${f.key}`}>
-                          {f.hint}
-                        </span>
-                      )}
-                    </label>
-                  ))}
-                </div>
-                {!groupMode && (
-                  <label data-testid="em-form-global-toggle"
-                    className="mt-2 flex cursor-pointer items-center gap-2 text-[11.5px] text-[#3A3A3C]">
-                    <input type="checkbox" checked={createGlobal}
-                      onChange={(e) => setCreateGlobal(e.target.checked)} />
-                    <span>Jadikan <b>Global</b> — berlaku untuk semua badan usaha, bukan hanya {entityLabel}</span>
+            {/* Form tambah baris — pop-up baku (FormModal), selaras layar pengaturan lain */}
+            <FormModal open={creating} onClose={() => { setCreating(false); setCreateValues({}); setCreateGlobal(false); }}
+              title={`Baris Baru · ${spec.label || data?.label || "Master"}`}
+              subtitle={groupMode || createGlobal ? "Berlaku Global — untuk semua badan usaha." : `Khusus ${entityLabel}.`}
+              icon={Plus} size="md" testId="em-create-form"
+              onSubmit={saveCreate} submitLabel={busyId === "create" ? "Menyimpan…" : "Simpan baris"} busy={busyId === "create"}
+              error={creating ? error : ""} submitTestId="em-form-save" cancelTestId="em-form-cancel">
+              <div className="grid gap-2.5 sm:grid-cols-2">
+                {createFields.map((f) => (
+                  <label key={f.key} className="grid gap-1 text-[11px] text-[#6B6B73]">
+                    <span className="font-semibold">{f.label}{f.required && <span className="text-[#C0392B]"> *</span>}</span>
+                    {f.type === "select" ? (
+                      <KNSelect testId={`em-form-${f.key}`} value={createValues[f.key] ?? ""}
+                        onValueChange={(v) => setCreateValues({ ...createValues, [f.key]: v })}
+                        options={selectOptionsOf(f)} placeholder="Pilih…" />
+                    ) : f.type === "checkbox" ? (
+                      <input data-testid={`em-form-${f.key}`} type="checkbox"
+                        checked={Boolean(createValues[f.key])}
+                        onChange={(e) => setCreateValues({ ...createValues, [f.key]: e.target.checked })}
+                        className="h-4 w-4" />
+                    ) : (
+                      <input data-testid={`em-form-${f.key}`} type={f.type === "number" ? "number" : "text"}
+                        value={toInputValue(f, createValues[f.key]) ?? ""} placeholder={f.placeholder || ""}
+                        onChange={(e) => setCreateValues({
+                          ...createValues,
+                          [f.key]: parseFieldValue(f, e.target.value),
+                        })}
+                        className="field" />
+                    )}
+                    {f.hint && (
+                      <span className="text-[10px] text-[#8E8E93]" data-testid={`em-form-hint-${f.key}`}>
+                        {f.hint}
+                      </span>
+                    )}
                   </label>
-                )}
-                <div className="mt-3 flex justify-end gap-2">
-                  <button className="secondary-button text-[11.5px]"
-                    onClick={() => { setCreating(false); setCreateValues({}); setCreateGlobal(false); }}>
-                    Batal
-                  </button>
-                  <button data-testid="em-form-save" className="primary-button text-[11.5px]"
-                    disabled={busyId === "create"} onClick={saveCreate}>
-                    <Save size={13} /> {busyId === "create" ? "Menyimpan…" : "Simpan baris"}
-                  </button>
-                </div>
+                ))}
               </div>
-            )}
+              {!groupMode && (
+                <label data-testid="em-form-global-toggle"
+                  className="mt-3 flex cursor-pointer items-center gap-2 text-[11.5px] text-[#3A3A3C]">
+                  <input type="checkbox" checked={createGlobal}
+                    onChange={(e) => setCreateGlobal(e.target.checked)} />
+                  <span>Jadikan <b>Global</b> — berlaku untuk semua badan usaha, bukan hanya {entityLabel}</span>
+                </label>
+              )}
+            </FormModal>
 
             {/* Ringkasan lapisan */}
             {data?.summary && !loading && (

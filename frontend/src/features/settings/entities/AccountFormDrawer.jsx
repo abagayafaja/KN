@@ -214,7 +214,7 @@ export default function AccountFormDrawer({ user, entities = [], selectedEntity,
             </div>
             <div className="relative mb-1.5">
               <Search size={13} className="absolute left-2 top-1/2 -translate-y-1/2 text-[#9A9BA3]" />
-              <input className="field pl-7 py-1 text-[12px]" data-testid="account-form-hr-search"
+              <input className="field !pl-7 !py-1 !text-[12px]" data-testid="account-form-hr-search"
                      placeholder="Cari nama karyawan…" value={empQuery}
                      onChange={(e) => setEmpQuery(e.target.value)} />
             </div>

@@ -126,7 +126,9 @@
   transition: border 140ms ease, box-shadow 140ms ease, background 140ms ease;
 }
 /* EPIC 0 — width default penuh, TAPI 0-specificity via :where() agar utility
-   Tailwind (w-[150px], w-28, w-full, dll) MENANG tanpa perlu `!important`. */
+   Tailwind (w-[150px], w-28, w-full, dll) MENANG tanpa perlu `!important`.
+   CATATAN: padding TIDAK boleh dipindah ke :where() — preflight Tailwind (`button, input { padding: 0 }`)
+   akan menang. Utility padding di atas `.field` (mis. ikon cari di kiri) pakai varian `!pl-7`. */
 :where(.field) { width: 100%; }
 .field::placeholder { color: #9A9BA3; }
 .field:focus {
@@ -264,6 +266,9 @@
   border-bottom: 1px solid var(--solid-line);
 }
 .section-head h2 { font-family: 'Outfit', sans-serif; font-size: 14px; font-weight: 700; margin: 0; letter-spacing: -0.005em; }
+/* Label kecil huruf kapital — bawaan untuk SEMUA pemakaian `.kicker` (label isian di drawer/wizard
+   pengaturan dulu tidak bergaya sama sekali sehingga tampil sebesar teks biasa). */
+.kicker { font-size: 10.5px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.04em; color: var(--text-muted, #6B6B73); }
 .section-head .kicker { font-size: 10.5px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.04em; color: var(--ios-blue-strong); margin-right: 8px; }
 .section-body { padding: 14px; }
 

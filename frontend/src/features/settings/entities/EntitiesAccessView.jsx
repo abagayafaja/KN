@@ -94,13 +94,11 @@ export default function EntitiesAccessView({ currentUser, selectedEntity, onNavi
             <button
               key={t.key}
               type="button"
+              role="tab"
+              aria-selected={active}
               data-testid={`entities-access-tab-${t.key}`}
               onClick={() => setTab(t.key)}
-              className={`inline-flex items-center gap-1.5 rounded-full border px-3.5 py-1.5 text-[12.5px] font-semibold transition-colors ${
-                active
-                  ? "border-[#1C1C1E] bg-[#1C1C1E] text-white"
-                  : "border-[#E5E5EA] bg-white text-[#3A3A3C] hover:border-[#1C1C1E]/40"
-              }`}
+              className={`tab-pill inline-flex items-center gap-1.5 ${active ? "active" : ""}`}
             >
               <Icon size={13} /> {t.label}
             </button>

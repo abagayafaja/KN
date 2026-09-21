@@ -1,7 +1,7 @@
 import KNDatePicker from "@/components/KNDatePicker";
 import { useState, useEffect, useCallback, useMemo } from "react";
 import MoneyInput from "@/components/MoneyInput";
-import { RefreshCw, Settings, Plus, Save, ShieldCheck, UserCog, Check, AlertTriangle, ChevronUp, ChevronDown } from "lucide-react";
+import { RefreshCw, Settings, Plus, Save, ShieldCheck, UserCog, Check, AlertTriangle, ChevronUp, ChevronDown, Filter } from "lucide-react";
 import CategoryManager from "./CategoryManager";
 import IntegrationsPanel from "./IntegrationsPanel";
 import GeminiIntegrationPanel from "./GeminiIntegrationPanel";
@@ -174,8 +174,13 @@ export default function AdminView({
   // dan formulir generik di sini tidak punya pagar itu: gudang bisa lahir tanpa mode.
   // Satu pintu saja → layar "Gudang (Master)" (`features/wms/warehouses`).
   const ALL_TABS = [
-    ["products", "Product"], ["categories", "Kategori"], ["customers", "Customer"], ["uoms", "UOM"], ["integrations", "Integrasi AI"], ["templates", "Templates"], ["permissions", "Permissions"], ["audit", "Audit"],
+    ["products", "Produk"], ["categories", "Kategori"], ["customers", "Pelanggan"], ["uoms", "Satuan (UOM)"], ["integrations", "Integrasi AI"], ["templates", "Template Dokumen"], ["permissions", "Hak Akses"], ["audit", "Jejak Audit"],
   ];
+  const TAB_SINGULAR = { products: "Produk", customers: "Pelanggan", uoms: "Satuan", templates: "Template Dokumen" };
+  const SECTION_LABEL = { header: "Kop surat", customer: "Data pelanggan", items: "Daftar barang", allocation: "Alokasi roll", signature: "Tanda tangan", footer: "Catatan kaki" };
+  const tabLabel = Object.fromEntries(ALL_TABS);
+  const statusLabel = (row) => ((row.status || (row.active === false ? "inactive" : "active")) === "inactive" ? "nonaktif" : "aktif");
+  const isInactive = (row) => statusLabel(row) === "nonaktif";
   const tabs = Array.isArray(only) && only.length ? ALL_TABS.filter(([id]) => only.includes(id)) : ALL_TABS;
   // Embedded (1 tab): sembunyikan header + tab-bar internal — konteks sudah dari HubTabs + PageMeta.
   const embedded = Array.isArray(only) && only.length === 1;
@@ -215,6 +220,37 @@ export default function AdminView({
     setImportLoading(false);
   };
 
+  const emptyCustomer = { name: "", pic_name: "", phone: "", city: "Jakarta", address: "", npwp: "", credit_limit: 0, sales_pic: "" };
+  const emptyUom = { code: "", name: "", base_type: "length", factor_to_base: 1, precision: 2, aliases: "", factor_per_document: false };
+  const [modalBusy, setModalBusy] = useState(false);
+  const modalSubmit = {
+    customers: async () => {
+      const r = await onAdminCreate("customers", customer);
+      if (r?.ok) { setCustomer(emptyCustomer); setShowCreateForm(false); }
+    },
+    uoms: async () => {
+      const r = await onAdminCreate("uoms", { ...uom, aliases: String(uom.aliases || "").split(",").map((a) => a.trim()).filter(Boolean) });
+      if (r?.ok) { setUom(emptyUom); setShowCreateForm(false); }   // tutup & kosongkan supaya tidak tercipta duplikat
+    },
+    templates: async () => {
+      const r = await onAdminCreate("document-templates", { ...template, columns: template.columns.split(",").map((c) => c.trim()).filter(Boolean) });
+      if (r?.ok) setShowCreateForm(false);
+    },
+    audit: () => { onRefreshAudit(); setShowCreateForm(false); },
+  }[tab];
+  const modalSubmitDisabled = {
+    customers: !canWrite || !customer.name.trim(),
+    uoms: !uom.code || !uom.name || !(uom.factor_to_base > 0),
+    templates: !template.document_type.trim() || !template.name.trim(),
+    audit: false,
+  }[tab] ?? false;
+  const modalSubmitLabel = { customers: "Simpan Pelanggan", uoms: "Simpan Satuan", templates: "Simpan Template", audit: "Terapkan Filter" }[tab];
+  const runModalSubmit = async () => {
+    if (!modalSubmit) return;
+    setModalBusy(true);
+    try { await modalSubmit(); } finally { setModalBusy(false); }
+  };
+
   const moveSection = (section, direction) => {
     const next = [...template.section_order];
     const index = next.indexOf(section);
@@ -231,7 +267,7 @@ export default function AdminView({
         <div className="section-head">
           <div className="flex items-center gap-3 min-w-0">
             <span className="kicker">Admin Master Data</span>
-            <h2>Kelola produk · pelanggan · gudang · UOM · template · pengguna</h2>
+            <h2>Kelola produk · pelanggan · satuan · template dokumen · hak akses · jejak audit</h2>
           </div>
           {onSeedDemo && (
             <button
@@ -244,8 +280,8 @@ export default function AdminView({
             </button>
           )}
         </div>
-        <div className="flex flex-wrap gap-1.5 px-3 pb-3">
-          {tabs.map(([id, label]) => <button key={id} data-testid={`admin-tab-${id}-button`} className={`nav-button ${tab === id ? "active" : ""}`} onClick={() => setTab(id)}><Settings size={13} /> {label}</button>)}
+        <div className="flex flex-wrap gap-1.5 px-3 pb-3" role="tablist">
+          {tabs.map(([id, label]) => <button key={id} type="button" role="tab" aria-selected={tab === id} data-testid={`admin-tab-${id}-button`} className={`tab-pill inline-flex items-center gap-1.5 ${tab === id ? "active" : ""}`} onClick={() => setTab(id)}><Settings size={13} /> {label}</button>)}
         </div>
       </section>
       )}
@@ -255,21 +291,30 @@ export default function AdminView({
       <section className="flex flex-col gap-3">
         {/* FASE P4 — form master data menjadi POP-UP. Tombolnya kini di ATAS daftar
             (dulu menempati kolom kiri 360px yang tampak sebagai panel kosong besar). */}
-        <button
-          data-testid="toggle-admin-create-form-button"
-          className="secondary-button self-start"
-          onClick={() => setShowCreateForm(true)}
-        >
-          <Plus size={14} /> Tampilkan Formulir Buat
-        </button>
+        {tab !== "permissions" && (
+          <button
+            data-testid="toggle-admin-create-form-button"
+            className="secondary-button self-start"
+            onClick={() => setShowCreateForm(true)}
+          >
+            {tab === "audit" ? <><Filter size={14} /> Filter Jejak Audit</> : <><Plus size={14} /> Buat {TAB_SINGULAR[tab] || "Data"}</>}
+          </button>
+        )}
         <FormModal
           open={showCreateForm}
           onClose={() => setShowCreateForm(false)}
-          title={editingProductId && tab === "products" ? "Ubah Data Master" : "Buat Data Master"}
-          subtitle={tab === "products" ? "Data induk produk. Harga di sini = harga dasar untuk pesanan BARU; pesanan yang sudah dibuat tidak berubah." : "Isian untuk tab yang sedang dibuka."}
-          icon={Plus}
+          title={tab === "audit" ? "Filter Jejak Audit" : editingProductId && tab === "products" ? `Ubah ${TAB_SINGULAR[tab]}` : `Buat ${TAB_SINGULAR[tab] || "Data Master"}`}
+          subtitle={tab === "products" ? "Data induk produk. Harga di sini = harga dasar untuk pesanan BARU; pesanan yang sudah dibuat tidak berubah."
+            : tab === "audit" ? "Persempit jejak audit berdasarkan pelaku, modul, aksi, dan rentang tanggal."
+            : `Isian ${TAB_SINGULAR[tab] || "data master"} baru.`}
+          icon={tab === "audit" ? Filter : Plus}
           size="md"
           testId="admin-create-form"
+          onSubmit={modalSubmit ? runModalSubmit : null}
+          submitLabel={modalSubmitLabel}
+          submitDisabled={modalSubmitDisabled}
+          busy={modalBusy}
+          submitTestId={{ customers: "admin-create-customer-button", uoms: "admin-create-uom-button", templates: "admin-create-template-button", audit: "refresh-audit-button" }[tab] || ""}
         >
           {tab === "products" && (
             <ProductMasterForm
@@ -288,9 +333,14 @@ export default function AdminView({
             />
           )}
           {tab === "customers" && <div className="grid gap-2">
-            {[["name", "Nama customer"], ["pic_name", "PIC"], ["phone", "Phone"], ["city", "Kota"], ["address", "Alamat"], ["npwp", "NPWP"], ["sales_pic", "Sales PIC"]].map(([key, ph]) => <input key={key} data-testid={`admin-customer-${key}-input`} className="field" placeholder={ph} value={customer[key]} onChange={(e) => setCustomer({ ...customer, [key]: e.target.value })} />)}
-            <MoneyInput testId="admin-customer-credit_limit-input" className="field" placeholder="Batas kredit" value={customer.credit_limit} onChange={(v) => setCustomer({ ...customer, credit_limit: Number(v) || 0 })} />
-            <button data-testid="admin-create-customer-button" className="primary-button" disabled={!canWrite} title={writeBlockHint} onClick={() => onAdminCreate("customers", customer)}><Save size={14} /> Simpan Pelanggan</button>
+            {[["name", "Nama pelanggan"], ["pic_name", "Nama PIC"], ["phone", "Telepon"], ["city", "Kota"], ["address", "Alamat"], ["npwp", "NPWP"], ["sales_pic", "Sales penanggung jawab"]].map(([key, ph]) => (
+              <label key={key} className="grid gap-1 text-[11px] font-semibold text-[#3C3C43]">{ph}{key === "name" ? " *" : ""}
+                <input data-testid={`admin-customer-${key}-input`} className="field" placeholder={ph} value={customer[key]} onChange={(e) => setCustomer({ ...customer, [key]: e.target.value })} />
+              </label>
+            ))}
+            <label className="grid gap-1 text-[11px] font-semibold text-[#3C3C43]">Batas kredit
+              <MoneyInput testId="admin-customer-credit_limit-input" className="field" placeholder="Batas kredit" value={customer.credit_limit} onChange={(v) => setCustomer({ ...customer, credit_limit: Number(v) || 0 })} />
+            </label>
             {!canWrite && <p data-testid="admin-customer-scope-note" className="text-[10.5px] text-[#8C4A00]">{writeBlockHint}</p>}
           </div>}
           {tab === "uoms" && <div className="grid gap-2.5" data-testid="admin-uom-form">
@@ -319,42 +369,49 @@ export default function AdminView({
                 onChange={(e) => setUom({ ...uom, factor_per_document: e.target.checked })} />
               Faktor berbeda per dokumen (mis. panjang 1 panel berbeda tiap pesanan)
             </label>
-            <button data-testid="admin-create-uom-button" className="primary-button" disabled={!uom.code || !uom.name || !(uom.factor_to_base > 0)}
-              onClick={async () => {
-                const r = await onAdminCreate("uoms", { ...uom, aliases: String(uom.aliases || "").split(",").map((a) => a.trim()).filter(Boolean) });
-                if (r?.ok) {   // tutup & kosongkan supaya tidak tercipta duplikat
-                  setUom({ code: "", name: "", base_type: "length", factor_to_base: 1, precision: 2, aliases: "", factor_per_document: false });
-                  setShowCreateForm(false);
-                }
-              }}><Save size={14} /> Simpan Satuan</button>
           </div>}
           {tab === "templates" && <div className="grid gap-2">
-            {[["document_type", "Tipe dokumen"], ["name", "Nama template"], ["header", "Header"], ["footer", "Footer"], ["columns", "Kolom dipisah koma"], ["logo_url", "Logo URL"], ["paper_size", "Ukuran kertas"], ["orientation", "Orientasi"], ["margin_mm", "Margin mm"], ["signature_left", "TTD kiri"], ["signature_right", "TTD kanan"]].map(([key, ph]) => <input key={key} data-testid={`admin-template-${key}-input`} className="field" placeholder={ph} value={template[key]} onChange={(e) => setTemplate({ ...template, [key]: key === "margin_mm" ? Number(e.target.value) : e.target.value })} />)}
-            <div data-testid="template-section-order-editor" className="rounded-md border border-[#EFF0F2] bg-[#FAFBFC] p-2.5">
-              <p className="mb-1.5 text-[11px] font-bold uppercase tracking-wide text-[#6B6B73]">Urutan section</p>
-              {template.section_order.map((section) => <div key={section} data-testid={`template-section-${section}`} draggable className="mb-1.5 flex items-center justify-between rounded-md bg-white px-2 py-1 text-[12px] font-semibold border border-[#EFF0F2]"><span>{section}</span><span className="flex gap-1"><button data-testid={`template-section-${section}-up-button`} className="secondary-button" onClick={() => moveSection(section, -1)}><ChevronUp size={13} /></button><button data-testid={`template-section-${section}-down-button`} className="secondary-button" onClick={() => moveSection(section, 1)}><ChevronDown size={13} /></button></span></div>)}
+            <div className="grid gap-2 sm:grid-cols-2">
+              {[["document_type", "Tipe dokumen", "mis. surat_jalan / invoice"], ["name", "Nama template", "mis. Template SJ Standard"], ["header", "Kop / header", "Kain Nusantara"], ["footer", "Catatan kaki", "Terima kasih"], ["columns", "Kolom (pisahkan koma)", "SKU,Nama Barang,Qty,Unit"], ["logo_url", "URL logo", "https://…"], ["margin_mm", "Margin (mm)", "12"], ["signature_left", "Tanda tangan kiri", "Dibuat Oleh"], ["signature_right", "Tanda tangan kanan", "Disetujui Oleh"]].map(([key, label, ph]) => (
+                <label key={key} className={`grid gap-1 text-[11px] font-semibold text-[#3C3C43] ${["columns", "logo_url"].includes(key) ? "sm:col-span-2" : ""}`}>{label}{["document_type", "name"].includes(key) ? " *" : ""}
+                  <input data-testid={`admin-template-${key}-input`} className="field" type={key === "margin_mm" ? "number" : "text"} min={key === "margin_mm" ? 0 : undefined} placeholder={ph} value={template[key]} onChange={(e) => setTemplate({ ...template, [key]: key === "margin_mm" ? Number(e.target.value) : e.target.value })} />
+                </label>
+              ))}
+              <label className="grid gap-1 text-[11px] font-semibold text-[#3C3C43]">Ukuran kertas
+                <KNSelect data-testid="admin-template-paper_size-input" className="field" value={template.paper_size}
+                  options={[{ value: "A4", label: "A4" }, { value: "A5", label: "A5" }, { value: "Letter", label: "Letter" }, { value: "F4", label: "F4 / Folio" }]} onValueChange={(v) => setTemplate({ ...template, paper_size: v })} />
+              </label>
+              <label className="grid gap-1 text-[11px] font-semibold text-[#3C3C43]">Orientasi
+                <KNSelect data-testid="admin-template-orientation-input" className="field" value={template.orientation}
+                  options={[{ value: "portrait", label: "Tegak (portrait)" }, { value: "landscape", label: "Mendatar (landscape)" }]} onValueChange={(v) => setTemplate({ ...template, orientation: v })} />
+              </label>
             </div>
-            <button data-testid="admin-create-template-button" className="primary-button" onClick={() => onAdminCreate("document-templates", { ...template, columns: template.columns.split(",").map((c) => c.trim()).filter(Boolean) })}><Save size={14} /> Simpan Template</button>
-          </div>}
-          {tab === "permissions" && <div data-testid="permission-matrix-editor" className="grid gap-2">
-            <p className="text-[12px] text-[#3C3C43]">Klik kotak centang untuk ubah izin. Perubahan tersimpan otomatis.</p>
-            <button data-testid="save-permissions-button" className="primary-button" onClick={() => onUpdatePermissions(permissions.matrix)}><ShieldCheck size={14} /> Simpan ke Database</button>
-            <p className="text-[10.5px] text-[#8E8E93]">Semua perubahan di-preview dulu, klik Simpan untuk persisten.</p>
+            <div data-testid="template-section-order-editor" className="rounded-md border border-[#EFF0F2] bg-[#FAFBFC] p-2.5">
+              <p className="mb-1.5 text-[11px] font-bold uppercase tracking-wide text-[#6B6B73]">Urutan bagian dokumen</p>
+              {template.section_order.map((section) => <div key={section} data-testid={`template-section-${section}`} className="mb-1.5 flex items-center justify-between rounded-md bg-white px-2 py-1 text-[12px] font-semibold border border-[#EFF0F2]"><span>{SECTION_LABEL[section] || section}</span><span className="flex gap-1"><button type="button" aria-label="Naik" data-testid={`template-section-${section}-up-button`} className="icon-button" onClick={() => moveSection(section, -1)}><ChevronUp size={13} /></button><button type="button" aria-label="Turun" data-testid={`template-section-${section}-down-button`} className="icon-button" onClick={() => moveSection(section, 1)}><ChevronDown size={13} /></button></span></div>)}
+            </div>
           </div>}
           {tab === "audit" && <div data-testid="audit-filter-panel" className="grid gap-2">
-            <input data-testid="audit-actor-filter-input" className="field" placeholder="Filter actor" value={auditFilters.actor} onChange={(e) => setAuditFilters({ ...auditFilters, actor: e.target.value })} />
-            <input data-testid="audit-module-filter-input" className="field" placeholder="Filter module/entity" value={auditFilters.module} onChange={(e) => setAuditFilters({ ...auditFilters, module: e.target.value })} />
-            <input data-testid="audit-action-filter-input" className="field" placeholder="Filter action" value={auditFilters.action} onChange={(e) => setAuditFilters({ ...auditFilters, action: e.target.value })} />
+            <label className="grid gap-1 text-[11px] font-semibold text-[#3C3C43]">Pelaku
+              <input data-testid="audit-actor-filter-input" className="field" placeholder="nama / email pelaku" value={auditFilters.actor} onChange={(e) => setAuditFilters({ ...auditFilters, actor: e.target.value })} /></label>
+            <label className="grid gap-1 text-[11px] font-semibold text-[#3C3C43]">Modul / entitas
+              <input data-testid="audit-module-filter-input" className="field" placeholder="mis. user, sales_order" value={auditFilters.module} onChange={(e) => setAuditFilters({ ...auditFilters, module: e.target.value })} /></label>
+            <label className="grid gap-1 text-[11px] font-semibold text-[#3C3C43]">Kunci aksi
+              <input data-testid="audit-action-filter-input" className="field" placeholder="mis. login, create" value={auditFilters.action} onChange={(e) => setAuditFilters({ ...auditFilters, action: e.target.value })} /></label>
             <div className="grid grid-cols-2 gap-2">
-              <KNDatePicker data-testid="audit-date-from-input" className="w-[170px]" placeholder="Dari" value={auditFilters.date_from} onChange={(v) => setAuditFilters({ ...auditFilters, date_from: v })} />
-              <KNDatePicker data-testid="audit-date-to-input" className="w-[170px]" placeholder="Sampai" min={auditFilters.date_from} value={auditFilters.date_to} onChange={(v) => setAuditFilters({ ...auditFilters, date_to: v })} />
+              <label className="grid gap-1 text-[11px] font-semibold text-[#3C3C43]">Dari tanggal
+                <KNDatePicker data-testid="audit-date-from-input" placeholder="Dari" value={auditFilters.date_from} onChange={(v) => setAuditFilters({ ...auditFilters, date_from: v })} /></label>
+              <label className="grid gap-1 text-[11px] font-semibold text-[#3C3C43]">Sampai tanggal
+                <KNDatePicker data-testid="audit-date-to-input" placeholder="Sampai" min={auditFilters.date_from} value={auditFilters.date_to} onChange={(v) => setAuditFilters({ ...auditFilters, date_to: v })} /></label>
             </div>
-            <button data-testid="refresh-audit-button" className="primary-button" onClick={onRefreshAudit}><RefreshCw size={14} /> Refresh Audit</button>
           </div>}
         </FormModal>
         <div className="section-card">
           <div className="section-head flex items-center justify-between gap-2">
-            <h2>Records</h2>
+            <h2>{tab === "permissions" ? "Matriks Hak Akses per Peran" : tab === "audit" ? "Jejak Audit" : `Daftar ${tabLabel[tab] || "Data"}`}</h2>
+            {tab === "permissions" && (
+              <button data-testid="save-permissions-button" className="primary-button" onClick={() => onUpdatePermissions(permissions.matrix)}><ShieldCheck size={14} /> Simpan Hak Akses</button>
+            )}
             {!["permissions", "audit", "integrations"].includes(tab) && (
               <button type="button" data-testid="admin-toggle-import-export" className="secondary-button text-[11px]"
                 onClick={() => setShowImportExport((v) => !v)}>
@@ -364,12 +421,12 @@ export default function AdminView({
           </div>
           <div className="section-body">
           {!["permissions", "audit", "integrations"].includes(tab) && showImportExport && <div data-testid="admin-import-export-panel" className="mb-3 grid gap-2 rounded-md border border-[#EFF0F2] bg-[#FAFBFC] p-2.5">
-            <p className="text-[11px] font-bold uppercase tracking-wide text-[#6B6B73]">Impor / Ekspor massal — {currentResource}</p>
-            <p className="text-[10.5px] text-[#6B6B73]">Unggah CSV/XLSX untuk membuat atau memperbarui banyak baris sekaligus. Gunakan <b>Preview Dry-Run</b> dulu untuk melihat dampaknya tanpa menyimpan.</p>
+            <p className="text-[11px] font-bold uppercase tracking-wide text-[#6B6B73]">Impor / Ekspor massal — {tabLabel[tab] || currentResource}</p>
+            <p className="text-[10.5px] text-[#6B6B73]">Unggah CSV/XLSX untuk membuat atau memperbarui banyak baris sekaligus. Gunakan <b>Pratinjau (dry-run)</b> dulu untuk melihat dampaknya tanpa menyimpan.</p>
             <input data-testid="admin-import-file-input" className="field" type="file" accept=".csv,.xlsx" onChange={(e) => setImportFile(e.target.files?.[0] || null)} />
             <div className="flex flex-wrap gap-1.5">
-              <button data-testid="admin-dry-run-button" className="secondary-button" disabled={importLoading} onClick={handleDryRunImport}>{importLoading ? "..." : "Preview Dry-Run"}</button>
-              <button data-testid="admin-import-button" className="secondary-button" onClick={() => { onImportMaster(currentResource, importFile, false); setImportPreview(null); }}>Impor</button>
+              <button data-testid="admin-dry-run-button" className="secondary-button" disabled={importLoading || !importFile} onClick={handleDryRunImport}>{importLoading ? "Memeriksa…" : "Pratinjau (dry-run)"}</button>
+              <button data-testid="admin-import-button" className="secondary-button" disabled={!importFile} onClick={() => { onImportMaster(currentResource, importFile, false); setImportPreview(null); }}>Impor</button>
               <button data-testid="admin-export-csv-button" className="secondary-button" onClick={() => onExportMaster(currentResource, "csv")}>Ekspor CSV</button>
               {tab === "products" && (
                 <button data-testid="admin-export-yarn-button" className="secondary-button" title="Katalog benang + kode versi supplier — untuk dibagikan ke pabrik"
@@ -378,12 +435,12 @@ export default function AdminView({
             </div>
             {importPreview && (
               <div data-testid="import-preview-result" className="rounded-md border border-[#EFF0F2] bg-white p-2 text-[11.5px]">
-                <p className="font-bold mb-1">Preview: {importPreview.total} baris</p>
+                <p className="font-bold mb-1">Pratinjau: {importPreview.total} baris</p>
                 <p className="text-green-700 inline-flex items-center gap-1"><Check size={12} /> Akan dibuat: {importPreview.created}</p>
-                <p className="text-blue-700">~ Akan diupdate: {importPreview.updated}</p>
+                <p className="text-blue-700">~ Akan diperbarui: {importPreview.updated}</p>
                 {(importPreview.errors || []).length > 0 && (
                   <div className="mt-1 max-h-24 overflow-auto">
-                    <p className="text-red-700 font-bold inline-flex items-center gap-1"><AlertTriangle size={12} /> {importPreview.errors.length} error:</p>
+                    <p className="text-red-700 font-bold inline-flex items-center gap-1"><AlertTriangle size={12} /> {importPreview.errors.length} galat:</p>
                     {(importPreview.errors || []).map((e, i) => <p key={i} className="text-red-600 text-[10.5px]">{e}</p>)}
                   </div>
                 )}
@@ -391,7 +448,10 @@ export default function AdminView({
               </div>
             )}
           </div>}
-          {tab === "permissions" && <PermissionMatrixRecords matrix={permissions.matrix} onUpdatePermissions={onUpdatePermissions} />}
+          {tab === "permissions" && <div className="grid gap-2">
+            <p className="text-[11.5px] text-[#6B6B73]" data-testid="permission-matrix-hint">Klik pil izin untuk mengubahnya. Perubahan hanya tampil di layar sampai tombol <b>Simpan Hak Akses</b> ditekan.</p>
+            <PermissionMatrixRecords matrix={permissions.matrix} onUpdatePermissions={onUpdatePermissions} />
+          </div>}
           {tab === "audit" && <div data-testid="audit-history-records" className="grid gap-2">
             {(auditLogs || []).slice(0, auditShown).map((log) => <button data-testid={`audit-row-${log.id}`} key={log.id} className="rounded-md border border-[#EFF0F2] bg-[#FAFBFC] interactive-card p-2.5 text-left" onClick={() => onShowDetail({ title: auditActionLabel(log.action), body: `Dicatat oleh ${log.actor} pada ${log.entity_type}. Kunci aksi: ${log.action}`, facts: [{ label: "Sumber Daya", value: `${log.entity_type} · ${log.entity_id}` }, { label: "Badan Usaha", value: log.scope_entity_name || log.scope_entity_id || "Tingkat grup" }, { label: "Peran", value: log.role || "—" }, { label: "Waktu", value: new Date(log.timestamp).toLocaleString("id-ID") }], target: "admin", cta: "Tetap di Audit" })}><div className="flex flex-wrap items-center justify-between gap-2"><p className="text-[12.5px] font-semibold">{auditActionLabel(log.action)} <span className="text-[10px] font-mono font-normal text-[#9A9BA3]" title="kunci aksi">{log.action}</span></p><p className="text-[10.5px] font-semibold text-[#0058CC]">{new Date(log.timestamp).toLocaleString("id-ID")}</p></div><p className="mt-0.5 text-[11.5px] text-[#3C3C43]">{log.actor} • {log.entity_type} • {log.entity_id}{log.scope_entity_name ? ` • ${log.scope_entity_name}` : ""}</p><p className="mt-1 line-clamp-2 text-[10.5px] text-[#3C3C43]">{JSON.stringify(log.after ?? log.details ?? {}).slice(0, 240)}</p></button>)}
             {(auditLogs || []).length > auditShown && (
@@ -414,7 +474,7 @@ export default function AdminView({
               </>
             )}
             {visibleRecords.length === 0 && (
-              <div data-testid={`admin-records-empty-${tab}`} className="px-3 py-8 text-center text-[12px] text-[#6B6B73]">Belum ada data {tab} {scopeSuffix(scopeEntities, scopeEntityId)}.</div>
+              <div data-testid={`admin-records-empty-${tab}`} className="px-3 py-8 text-center text-[12px] text-[#6B6B73]">Belum ada {(tabLabel[tab] || tab).toLowerCase()} {scopeSuffix(scopeEntities, scopeEntityId)}.</div>
             )}
             {visibleRecords.map((row) => (
               <div data-testid={`admin-record-${tab}-${row.id}`} key={row.id} role="button" tabIndex={0} className="rounded-md border border-[#EFF0F2] bg-[#FAFBFC] interactive-card flex flex-col gap-2 p-2.5 md:flex-row md:items-center md:justify-between" onClick={() => onShowDetail(tab === "products"
@@ -431,12 +491,12 @@ export default function AdminView({
                       { label: "Status", value: `${row.status || (row.active === false ? "inactive" : "active")} · tahap ${row.stage || "finished"}` },
                     ],
                   }
-                : { title: row.name || row.legal_name || row.code || row.email, body: `Record ${tab} — gunakan tombol di baris ini untuk mengubah atau menonaktifkan.`, facts: [{ label: "Module", value: tab }, { label: "Status", value: row.status || (row.active === false ? "inactive" : "active") }] })}>
+                : { title: row.name || row.legal_name || row.code || row.email, body: `${TAB_SINGULAR[tab] || "Data"} — gunakan tombol di baris ini untuk mengubah atau menonaktifkan.`, facts: [{ label: "Modul", value: tabLabel[tab] || tab }, { label: "Status", value: statusLabel(row) }] })}>
                 <div className="min-w-0">
                   <p data-testid={`admin-record-title-${row.id}`} className="text-[12.5px] font-semibold truncate">{row.name || row.legal_name || row.code || row.email}</p>
                   <p data-testid={`admin-record-meta-${row.id}`} className="text-[11px] text-[#3C3C43] truncate">{tab === "uoms"
                     ? `${row.code} · ${{ length: "panjang", weight: "berat", count: "hitungan" }[row.base_type] || row.base_type || "—"} · 1 ${row.code} = ${row.factor_to_base ?? "?"} satuan dasar · ${row.precision ?? 2} desimal${(row.aliases || []).length ? ` · alias: ${row.aliases.join(", ")}` : ""}${row.factor_per_document ? " · faktor per dokumen" : ""}`
-                    : <>{row.sku || row.code || row.document_type || row.role || row.short_name || row.city} • {row.status || (row.active === false ? "inactive" : "active")}{tab === "products" ? supplierCodesLabel(row) : ""}</>}</p>
+                    : <>{row.sku || row.code || row.document_type || row.role || row.short_name || row.city} • <span className={isInactive(row) ? "text-[#8E8E93]" : "text-[#1A7A3A]"}>{statusLabel(row)}</span>{tab === "products" ? supplierCodesLabel(row) : ""}</>}</p>
                   {tab === "products" && (
                     <div data-testid={`admin-product-domain-${row.id}`} className="mt-1 flex flex-wrap items-center gap-1">
                       <ProductLifecycleCell product={row}
@@ -470,9 +530,9 @@ export default function AdminView({
                 </div>
                 <div className="flex flex-wrap gap-1.5">
                   {tab === "products" && <button data-testid={`admin-edit-products-${row.id}-button`} className="secondary-button" onClick={(e) => { e.stopPropagation(); loadProductForEdit(row); window.scrollTo({ top: 0, behavior: "smooth" }); }}>Ubah</button>}
-                  {!["products", "uoms"].includes(tab) && <button data-testid={`admin-update-${tab}-${row.id}-button`} className="secondary-button" onClick={(e) => { e.stopPropagation(); onAdminPatch(tab === "templates" ? "document-templates" : tab, row.id, tab === "uoms" ? { precision: row.precision } : { status: row.status || "active" }); }}>Update</button>}
-                  {tab === "templates" && data.orders?.[0] && <button data-testid={`admin-preview-template-${row.id}-button`} className="secondary-button" onClick={(e) => { e.stopPropagation(); onPreviewTemplate(row.id, data.orders[0].id); }}>Preview</button>}
-                  <button data-testid={`admin-delete-${tab}-${row.id}-button`} className="danger-button" onClick={(e) => { e.stopPropagation(); onAdminDelete(tab === "templates" ? "document-templates" : tab, row.id); }}>Deactivate</button>
+                  {!["products", "uoms"].includes(tab) && isInactive(row) && <button data-testid={`admin-update-${tab}-${row.id}-button`} className="secondary-button" onClick={(e) => { e.stopPropagation(); onAdminPatch(tab === "templates" ? "document-templates" : tab, row.id, { status: "active" }); }}>Aktifkan</button>}
+                  {tab === "templates" && data.orders?.[0] && <button data-testid={`admin-preview-template-${row.id}-button`} className="secondary-button" onClick={(e) => { e.stopPropagation(); onPreviewTemplate(row.id, data.orders[0].id); }}>Pratinjau</button>}
+                  {!isInactive(row) && <button data-testid={`admin-delete-${tab}-${row.id}-button`} className="danger-button" onClick={(e) => { e.stopPropagation(); onAdminDelete(tab === "templates" ? "document-templates" : tab, row.id); }}>Nonaktifkan</button>}
                 </div>
               </div>
             ))}

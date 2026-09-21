@@ -489,7 +489,7 @@ export default function SettingsHub({
             Seluruh perubahan konfigurasi, terbaru dulu. Data bersifat <b>append-only</b>:
             nilai lama tidak pernah ditimpa sehingga selalu bisa ditelusuri dan dipulihkan.
           </p>
-          <button className="btn-primary btn-sm" onClick={() => setHist({})}
+          <button className="btn-secondary btn-sm self-start" onClick={() => setHist({})}
             data-testid="cfg-open-all-history">
             <History size={14} /> Buka riwayat lengkap
           </button>

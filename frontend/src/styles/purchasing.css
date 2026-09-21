@@ -46,6 +46,13 @@
 }
 .form-input::placeholder { color: #9A9BA3; }
 .form-input:focus { border-color: var(--ios-blue); box-shadow: 0 0 0 3px rgba(0, 122, 255, 0.16); }
+/* Kelompok isian baku (form-group/label/help) — dulu TIDAK punya gaya sama sekali sehingga
+   form Aturan Persetujuan & Retur tampil dengan label sebesar teks biasa dan tanpa jarak. */
+.form-group { display: flex; flex-direction: column; gap: 5px; min-width: 0; }
+.form-group + .form-group { margin-top: 10px; }
+.form-row-2col > .form-group, .form-row-3col > .form-group { margin-top: 0; }
+.form-label { font-size: 10.5px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.04em; color: var(--text-muted, #6B6B73); }
+.form-help { font-size: 10.5px; color: #8E8E93; line-height: 1.35; margin: 0; }
 
 /* === MODAL === */
 .modal-overlay {

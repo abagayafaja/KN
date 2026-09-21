@@ -118,7 +118,7 @@ export default function CustomerList({ currentUser, selectedEntity, focusDoc, on
             <div className="relative flex-1 min-w-[180px]">
               <Search size={13} className="absolute left-2.5 top-1/2 -translate-y-1/2 text-[#9A9BA3]" />
               <input data-testid="customer-search" value={search} onChange={(e) => setSearch(e.target.value)}
-                className="field pl-8" placeholder="Cari nama / kode / kota..." />
+                className="field !pl-8" placeholder="Cari nama / kode / kota..." />
             </div>
             <KNSelect value={segment} onValueChange={setSegment} className="field w-[150px]"
               data-testid="customer-filter-segment" placeholder="Segment"

@@ -364,8 +364,17 @@
   padding: var(--sp-3); background: #eff6ff; border: 1px solid #bfdbfe;
   border-radius: var(--r-md); font-size: .85rem; color: #1e3a8a; margin: 0;
 }
+/* Pembungkus alat (BUKAN `.cfg-impact` — kelas itu gaya teks bantuan satu baris; dulu dipakai
+   ganda sehingga intro & form berjejer ke samping dan ikon berwarna oranye). */
+.cfg-impact-tool { display: flex; flex-direction: column; gap: var(--sp-3); }
+.cfg-impact-intro { display: flex; align-items: flex-start; gap: 10px; }
+.cfg-impact-intro svg { flex: 0 0 auto; margin-top: 2px; color: var(--ios-blue); }
+.cfg-impact-intro h3 { margin: 0 0 2px; font-size: .9rem; font-weight: 700; }
+.cfg-impact-intro p { margin: 0; }
 .cfg-impact-form { display: flex; align-items: flex-end; gap: var(--sp-3); flex-wrap: wrap; }
-.cfg-impact-field { display: flex; flex-direction: column; gap: 3px; font-size: .78rem; font-weight: 600; color: #334155; min-width: 200px; }
+.cfg-impact-field { display: flex; flex-direction: column; gap: 4px; min-width: 200px; flex: 1 1 200px; }
+.cfg-impact-field > span:first-child { font-size: .72rem; font-weight: 700; text-transform: uppercase; letter-spacing: .04em; color: var(--ios-muted); }
+.cfg-impact-field-wide { flex: 2 1 320px; }
 .cfg-impact-toolbar { display: flex; align-items: center; gap: var(--sp-3); flex-wrap: wrap; }
 .cfg-impact-summary {
   display: flex; align-items: center; gap: var(--sp-3); flex-wrap: wrap;

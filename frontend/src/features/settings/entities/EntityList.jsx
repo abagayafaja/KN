@@ -135,7 +135,7 @@ export default function EntityList({ entities = [], loading, canManage, onOpen,
             <Search size={13} className="absolute left-2 top-1/2 -translate-y-1/2 text-[#9A9BA3]" />
             <input
               data-testid="entity-search-input"
-              className="field pl-7 py-1 text-[12px]"
+              className="field !pl-7 !py-1 !text-[12px]"
               placeholder="Cari nama / kode / kota…"
               value={q}
               onChange={(e) => { setQ(e.target.value); setPage(1); }}

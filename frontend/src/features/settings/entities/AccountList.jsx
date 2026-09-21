@@ -209,7 +209,7 @@ export default function AccountList({ entities = [], currentUser, selectedEntity
           </div>
           <div className="relative">
             <Search size={13} className="absolute left-2 top-1/2 -translate-y-1/2 text-[#9A9BA3]" />
-            <input data-testid="account-search-input" className="field pl-7 py-1 text-[12px]"
+            <input data-testid="account-search-input" className="field !pl-7 !py-1 !text-[12px]"
                    placeholder="Cari nama / email…" value={q}
                    onChange={(e) => { setQ(e.target.value); setPage(1); }} />
           </div>
